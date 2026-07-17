@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+pydantic-settings
+python-dotenv
+neo4j
+supabase
+groq
+sentence-transformers
+pymupdf
+openpyxl
+python-docx
