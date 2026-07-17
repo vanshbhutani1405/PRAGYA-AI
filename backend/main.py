@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import documents, query
+from routers import benchmarks, conflicts, documents, expert, graph, query
 from services import neo4j_service
 
 
@@ -25,6 +25,10 @@ app.add_middleware(
 
 app.include_router(documents.router)
 app.include_router(query.router)
+app.include_router(conflicts.router)
+app.include_router(expert.router)
+app.include_router(graph.router)
+app.include_router(benchmarks.router)
 
 
 @app.get("/health")
