@@ -13,3 +13,4 @@ pymupdf
 openpyxl
 python-docx
 reportlab
+requests

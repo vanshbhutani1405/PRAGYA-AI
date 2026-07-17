@@ -68,3 +68,75 @@ def get_chat_history(session_id: str, limit: int = 12) -> list[dict]:
     )
     return list(reversed(response.data))
 
+
+def get_conflicts(status: str | None = None) -> list[dict]:
+    """Fetch conflicts, optionally filtered by status, ordered by severity then detected_at."""
+    query = _client.table("conflicts").select("*")
+    if status is not None:
+        query = query.eq("status", status)
+    response = (
+        query.order("severity", desc=True).order("detected_at", desc=True).execute()
+    )
+    return response.data
+
+
+def get_conflict_by_id(conflict_id: str) -> dict:
+    """Fetch a single conflict row, or an empty dict if not found."""
+    response = _client.table("conflicts").select("*").eq("id", conflict_id).execute()
+    return response.data[0] if response.data else {}
+
+
+def update_conflict(conflict_id: str, updates_dict: dict) -> dict:
+    """Patch arbitrary fields on a conflict row and return the updated record."""
+    response = (
+        _client.table("conflicts")
+        .update(updates_dict)
+        .eq("id", conflict_id)
+        .execute()
+    )
+    return response.data[0] if response.data else {}
+
+
+def insert_conflict(conflict_dict: dict) -> dict:
+    """Insert a new conflict record and return it."""
+    response = _client.table("conflicts").insert(conflict_dict).execute()
+    return response.data[0] if response.data else {}
+
+
+def get_expert_contributions() -> list[dict]:
+    """Fetch all expert contributions, newest first."""
+    response = (
+        _client.table("expert_contributions")
+        .select("*")
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return response.data
+
+
+def insert_expert_contribution(data_dict: dict) -> dict:
+    """Insert a single expert contribution row and return it."""
+    response = _client.table("expert_contributions").insert(data_dict).execute()
+    return response.data[0] if response.data else {}
+
+
+def get_benchmark_results() -> list[dict]:
+    """Fetch all benchmark result rows."""
+    response = _client.table("benchmark_results").select("*").execute()
+    return response.data
+
+
+def seed_benchmarks(questions_list: list[dict]) -> dict:
+    """Upsert benchmark questions by query_id, skipping any that already exist."""
+    existing = _client.table("benchmark_results").select("query_id").execute()
+    existing_ids = {row["query_id"] for row in existing.data}
+    new_rows = [q for q in questions_list if q.get("query_id") not in existing_ids]
+    if not new_rows:
+        return {"inserted": 0, "skipped": len(questions_list), "rows": []}
+    response = _client.table("benchmark_results").insert(new_rows).execute()
+    return {
+        "inserted": len(response.data),
+        "skipped": len(questions_list) - len(new_rows),
+        "rows": response.data,
+    }
+

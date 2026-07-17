@@ -7,7 +7,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
-from services.supabase_service import _client
+from services import supabase_service
 
 router = APIRouter(prefix="/api/v1/conflicts", tags=["conflicts"])
 
@@ -16,38 +16,26 @@ _RESPONSIBLE_ROLE = "shift_supervisor"
 
 @router.get("")
 async def list_conflicts():
-    response = (
-        _client.table("conflicts")
-        .select("*")
-        .order("severity", desc=True)
-        .order("detected_at", desc=True)
-        .execute()
-    )
-    return response.data
+    return supabase_service.get_conflicts()
 
 
 @router.get("/{conflict_id}")
 async def get_conflict(conflict_id: str):
-    response = (
-        _client.table("conflicts").select("*").eq("id", conflict_id).execute()
-    )
-    if not response.data:
+    conflict = supabase_service.get_conflict_by_id(conflict_id)
+    if not conflict:
         raise HTTPException(status_code=404, detail="Conflict not found")
-    return response.data[0]
+    return conflict
 
 
 @router.patch("/{conflict_id}/resolve")
 async def resolve_conflict(conflict_id: str):
     resolved_at = datetime.now(timezone.utc).isoformat()
-    response = (
-        _client.table("conflicts")
-        .update({"status": "resolved", "resolved_at": resolved_at})
-        .eq("id", conflict_id)
-        .execute()
+    updated = supabase_service.update_conflict(
+        conflict_id, {"status": "resolved", "resolved_at": resolved_at}
     )
-    if not response.data:
+    if not updated:
         raise HTTPException(status_code=404, detail="Conflict not found")
-    return response.data[0]
+    return updated
 
 
 def _build_work_order_pdf(conflict: dict) -> bytes:
@@ -109,12 +97,10 @@ def _wrap(text: str, width: int) -> list[str]:
 
 @router.post("/{conflict_id}/generate")
 async def generate_work_order(conflict_id: str):
-    response = (
-        _client.table("conflicts").select("*").eq("id", conflict_id).execute()
-    )
-    if not response.data:
+    conflict = supabase_service.get_conflict_by_id(conflict_id)
+    if not conflict:
         raise HTTPException(status_code=404, detail="Conflict not found")
-    pdf_bytes = _build_work_order_pdf(response.data[0])
+    pdf_bytes = _build_work_order_pdf(conflict)
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

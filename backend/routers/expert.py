@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from agents import expert_agent
-from services.supabase_service import _client
+from services import supabase_service
 
 router = APIRouter(prefix="/api/v1/expert", tags=["expert"])
 
@@ -29,17 +29,10 @@ async def contribute(request: ContributionRequest):
         "text": request.text,
         "entities_found": result["entities_found"],
     }
-    response = _client.table("expert_contributions").insert(record).execute()
-    saved = response.data[0] if response.data else record
+    saved = supabase_service.insert_expert_contribution(record) or record
     return {"contribution": saved, "entities_found": result["entities_found"]}
 
 
 @router.get("/contributions")
 async def list_contributions():
-    response = (
-        _client.table("expert_contributions")
-        .select("*")
-        .order("created_at", desc=True)
-        .execute()
-    )
-    return response.data
+    return supabase_service.get_expert_contributions()
