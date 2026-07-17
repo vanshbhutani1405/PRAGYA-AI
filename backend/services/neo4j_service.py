@@ -14,6 +14,26 @@ def close():
     _driver.close()
 
 
+def get_entity_neighbours(tag: str) -> dict:
+    """Fetch an entity with its 1-hop neighbours and their state_history."""
+    query = (
+        "MATCH (n:Entity {tag: $tag}) "
+        "OPTIONAL MATCH (n)-[r]-(m:Entity) "
+        "RETURN n AS node, collect(DISTINCT {rel: type(r), neighbour: m}) AS neighbours"
+    )
+    with _driver.session() as session:
+        record = session.run(query, tag=tag).single()
+        if not record or record["node"] is None:
+            return {}
+        neighbours = []
+        for item in record["neighbours"]:
+            if item["neighbour"] is not None:
+                neighbours.append(
+                    {"rel": item["rel"], "entity": dict(item["neighbour"])}
+                )
+        return {"entity": dict(record["node"]), "neighbours": neighbours}
+
+
 def upsert_entity_node(tag: str, node_type: str, properties: dict) -> dict:
     """Create or update an entity node, merging properties and keeping a state_history list."""
     query = (

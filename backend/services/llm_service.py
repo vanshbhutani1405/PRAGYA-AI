@@ -41,6 +41,24 @@ def _parse_json(content: str) -> dict:
     return result
 
 
+def chat_json(system_prompt: str, user_prompt: str, temperature: float = 0.0) -> dict:
+    """Generic JSON-mode completion used by reasoning agents."""
+    completion = _client.chat.completions.create(
+        model=settings.GROQ_TEXT_MODEL,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=temperature,
+        response_format={"type": "json_object"},
+    )
+    content = completion.choices[0].message.content
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        return {}
+
+
 def extract_entities(text: str) -> dict:
     """Extract structured entities from document text as JSON."""
     completion = _client.chat.completions.create(

@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import documents
+from routers import documents, query
 from services import neo4j_service
 
 
@@ -13,7 +13,7 @@ async def lifespan(app: FastAPI):
     neo4j_service.close()
 
 
-app = FastAPI(title="NEXUS Industrial Knowledge Reasoning Engine", lifespan=lifespan)
+app = FastAPI(title="PRAGYA AI Industrial Knowledge Reasoning Engine", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,6 +24,7 @@ app.add_middleware(
 )
 
 app.include_router(documents.router)
+app.include_router(query.router)
 
 
 @app.get("/health")

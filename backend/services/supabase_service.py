@@ -48,3 +48,23 @@ def list_documents() -> list[dict]:
         _client.table("documents").select("*").order("created_at", desc=True).execute()
     )
     return response.data
+
+
+def save_chat_message(message: dict) -> dict:
+    """Persist a chat message (session_id, role, content) to chat_messages."""
+    response = _client.table("chat_messages").insert(message).execute()
+    return response.data[0] if response.data else {}
+
+
+def get_chat_history(session_id: str, limit: int = 12) -> list[dict]:
+    """Return the most recent chat messages for a session in chronological order."""
+    response = (
+        _client.table("chat_messages")
+        .select("*")
+        .eq("session_id", session_id)
+        .order("created_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return list(reversed(response.data))
+
