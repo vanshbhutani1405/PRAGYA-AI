@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import { motion } from "framer-motion";
 import { X, Share2, Circle } from "lucide-react";
-import type { GraphExport } from "../services/types";
+import type { GraphExport, NodeDetail } from "../../services/types";
 
 interface SimNode extends d3.SimulationNodeDatum {
   id: string;
@@ -172,7 +172,7 @@ export function NodeDetailPanel({
   onClose,
   loading,
 }: {
-  detail: import("../services/types").NodeDetail | undefined;
+  detail: NodeDetail | undefined;
   onClose: () => void;
   loading: boolean;
 }) {

@@ -76,8 +76,8 @@ export async function getNodeDetail(tag: string): Promise<NodeDetail> {
 
 export async function submitExpertContribution(
   payload: ExpertContributionInput
-): Promise<ExpertContribution> {
-  const { data } = await api.post<ExpertContribution>(
+): Promise<ExpertContributeResponse> {
+  const { data } = await api.post<ExpertContributeResponse>(
     "/api/v1/expert/contribute",
     payload
   );
