@@ -105,6 +105,11 @@ export interface ExpertContributionInput {
   text: string;
 }
 
+export interface ExpertContributeResponse {
+  contribution: ExpertContribution;
+  entities_found: string[];
+}
+
 export interface BenchmarkResult {
   id?: number;
   query_id: string;
