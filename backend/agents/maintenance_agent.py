@@ -44,16 +44,30 @@ def _urgency_from_risk(score: float) -> str:
     return "scheduled"
 
 
+def _parse_history_entries(history: list) -> list:
+    parsed = []
+    for entry in history:
+        if isinstance(entry, str):
+            try:
+                parsed.append(json.loads(entry))
+            except json.JSONDecodeError:
+                parsed.append({"raw": entry})
+        else:
+            parsed.append(entry)
+    return parsed
+
+
 def _state_timeline(entities: list[str]) -> list[dict]:
     timeline = []
     for tag in entities:
         graph = neo4j_service.get_entity_neighbours(tag)
         if graph:
             entity = graph["entity"]
+            history = neo4j_service.get_equipment_timeline(tag)
             timeline.append(
                 {
                     "tag": entity.get("tag", tag),
-                    "state_history": entity.get("state_history", []),
+                    "state_history": _parse_history_entries(history),
                     "criticality": entity.get("criticality", "unknown"),
                 }
             )

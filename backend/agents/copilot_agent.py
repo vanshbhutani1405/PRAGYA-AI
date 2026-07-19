@@ -15,11 +15,29 @@ _SYSTEM_PROMPT = (
 )
 
 
+def _normalize_state_history(entity: dict) -> dict:
+    history = entity.get("state_history", [])
+    parsed = []
+    for entry in history:
+        if isinstance(entry, str):
+            try:
+                parsed.append(json.loads(entry))
+            except json.JSONDecodeError:
+                parsed.append({"raw": entry})
+        else:
+            parsed.append(entry)
+    entity["state_history"] = parsed
+    return entity
+
+
 def _resolve_entity_states(entities: list[str]) -> list[dict]:
     resolved = []
     for tag in entities:
         graph = neo4j_service.get_entity_neighbours(tag)
         if graph:
+            graph["entity"] = _normalize_state_history(graph["entity"])
+            for neighbour in graph.get("neighbours", []):
+                neighbour["entity"] = _normalize_state_history(neighbour["entity"])
             resolved.append(graph)
     return resolved
 

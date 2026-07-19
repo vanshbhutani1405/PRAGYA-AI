@@ -87,6 +87,11 @@ _CONFLICTS = [
 
 
 def seed_graph() -> None:
+    print(f"Deleting existing {PUMP_TAG} node (safe re-run) ...")
+    with neo4j_service._driver.session() as session:
+        session.run(
+            "MATCH (e:Entity {tag: $tag}) DETACH DELETE e", tag=PUMP_TAG
+        )
     print(f"Seeding Neo4j equipment node {PUMP_TAG} ...")
     neo4j_service.upsert_entity_node(
         PUMP_TAG, "equipment", {"criticality": "process_critical"}

@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 
 from neo4j import GraphDatabase
@@ -12,6 +13,30 @@ _driver = GraphDatabase.driver(
 
 def close():
     _driver.close()
+
+
+def _parse_state_history(raw) -> list:
+    """Deserialize state_history entries stored as JSON strings (Aura-safe format)."""
+    if not raw:
+        return []
+    parsed = []
+    for item in raw:
+        if isinstance(item, str):
+            try:
+                parsed.append(json.loads(item))
+            except json.JSONDecodeError:
+                parsed.append({"raw": item})
+        else:
+            parsed.append(item)
+    return parsed
+
+
+def _entity_dict(node) -> dict:
+    """Convert a Neo4j node to a dict with state_history deserialized."""
+    entity = dict(node)
+    if "state_history" in entity:
+        entity["state_history"] = _parse_state_history(entity["state_history"])
+    return entity
 
 
 def get_entity_neighbours(tag: str) -> dict:
@@ -29,13 +54,19 @@ def get_entity_neighbours(tag: str) -> dict:
         for item in record["neighbours"]:
             if item["neighbour"] is not None:
                 neighbours.append(
-                    {"rel": item["rel"], "entity": dict(item["neighbour"])}
+                    {"rel": item["rel"], "entity": _entity_dict(item["neighbour"])}
                 )
-        return {"entity": dict(record["node"]), "neighbours": neighbours}
+        return {"entity": _entity_dict(record["node"]), "neighbours": neighbours}
 
 
 def upsert_entity_node(tag: str, node_type: str, properties: dict) -> dict:
     """Create or update an entity node, merging properties and keeping a state_history list."""
+    properties = dict(properties or {})
+    if "state_history" in properties:
+        properties["state_history"] = [
+            entry if isinstance(entry, str) else json.dumps(entry, default=str)
+            for entry in properties["state_history"]
+        ]
     query = (
         "MERGE (n:Entity {tag: $tag}) "
         "ON CREATE SET n.created_at = $now, n.state_history = [] "
@@ -47,19 +78,18 @@ def upsert_entity_node(tag: str, node_type: str, properties: dict) -> dict:
             query,
             tag=tag,
             node_type=node_type,
-            properties=properties or {},
+            properties=properties,
             now=datetime.now(timezone.utc).isoformat(),
         ).single()
-        return dict(record["n"]) if record else {}
+        return _entity_dict(record["n"]) if record else {}
 
 
 def add_state_transition(tag: str, transition_dict: dict) -> dict:
-    """Append a state transition (as a serialized entry) to an entity's state_history."""
+    """Append a state transition (stored as a JSON string) to an entity's state_history."""
     entry = {
         "recorded_at": datetime.now(timezone.utc).isoformat(),
         **transition_dict,
     }
-    serialized = {k: str(v) for k, v in entry.items()}
     query = (
         "MERGE (n:Entity {tag: $tag}) "
         "ON CREATE SET n.created_at = $now, n.state_history = [] "
@@ -71,10 +101,10 @@ def add_state_transition(tag: str, transition_dict: dict) -> dict:
         record = session.run(
             query,
             tag=tag,
-            entry=[str(serialized)],
+            entry=[json.dumps(entry, default=str)],
             now=datetime.now(timezone.utc).isoformat(),
         ).single()
-        return dict(record["n"]) if record else {}
+        return _entity_dict(record["n"]) if record else {}
 
 
 def get_all_nodes() -> list[dict]:
@@ -90,7 +120,7 @@ def get_all_nodes() -> list[dict]:
         {
             "tag": r["tag"],
             "type": r["type"],
-            "state_history": r["state_history"] or [],
+            "state_history": _parse_state_history(r["state_history"]),
             "criticality": r["criticality"] or "unknown",
         }
         for r in records
@@ -147,10 +177,10 @@ def export_graph_d3() -> dict:
 
 
 def get_equipment_timeline(tag: str) -> list:
-    """Return the state_history list for a single equipment tag."""
+    """Return the deserialized state_history list for a single equipment tag."""
     query = "MATCH (n:Entity {tag: $tag}) RETURN n.state_history AS state_history"
     with _driver.session() as session:
         record = session.run(query, tag=tag).single()
     if not record or record["state_history"] is None:
         return []
-    return record["state_history"]
+    return _parse_state_history(record["state_history"])

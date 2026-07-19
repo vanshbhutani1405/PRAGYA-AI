@@ -6,7 +6,7 @@ class Settings(BaseSettings):
 
     NEO4J_URI: str
     NEO4J_PASSWORD: str
-    NEO4J_USER: str = "neo4j"
+    NEO4J_USER: str = "b3a8d7d2"
 
     SUPABASE_URL: str
     SUPABASE_KEY: str
