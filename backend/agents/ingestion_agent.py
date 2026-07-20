@@ -104,7 +104,9 @@ def ingest(filename: str, file_bytes: bytes) -> dict:
         raise ValueError(f"Unsupported file type: {filename}")
 
     if entities is None:
-        entities = llm_service.extract_entities(text)
+        words = text.split()
+        extraction_text = " ".join(words[:6000]) if len(words) > 6000 else text
+        entities = llm_service.extract_entities(extraction_text)
 
     _update_graph(entities)
 
