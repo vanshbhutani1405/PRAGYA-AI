@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { usePragyaQuery } from "../hooks/useQuery";
 import type { AgentStep } from "../hooks/useQuery";
+import { useTypingEffect } from "../hooks/useTypingEffect";
 import { PageContainer, PageHeader } from "../components/ui/PageHeader";
 import { EmptyState } from "../components/ui/EmptyState";
 import { formatINR } from "../lib/utils";
@@ -74,12 +75,16 @@ export function Copilot() {
   );
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const { visible: typedRecommendation, done: typingDone } = useTypingEffect(
+    synthesis?.primary_recommendation ?? ""
+  );
+
   useEffect(() => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
     });
-  }, [steps.length, synthesis]);
+  }, [steps.length, synthesis, typedRecommendation]);
 
   const submit = (q: string) => {
     const query = q.trim();
@@ -100,6 +105,9 @@ export function Copilot() {
     });
     return Array.from(set);
   }, [steps, synthesis]);
+
+  // Sources/citations are only revealed once the answer has finished typing.
+  const showCitations = typingDone && citations.length > 0;
 
   const hasActivity = steps.length > 0 || synthesis || isStreaming || error;
 
@@ -186,10 +194,13 @@ export function Copilot() {
                   <Sparkles size={13} /> Recommendation
                 </div>
                 <p className="mt-2 text-sm leading-relaxed text-body">
-                  {synthesis.primary_recommendation}
+                  {typedRecommendation}
+                  {!typingDone && (
+                    <span className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-violet-400 align-middle" />
+                  )}
                 </p>
 
-                {synthesis.financial_exposure_inr > 0 && (
+                {typingDone && synthesis.financial_exposure_inr > 0 && (
                   <div className="mt-4 inline-flex items-center gap-2 rounded-xl bg-card px-3 py-2 shadow-sm">
                     <span className="text-xs text-muted">
                       Financial exposure
@@ -200,7 +211,7 @@ export function Copilot() {
                   </div>
                 )}
 
-                {synthesis.conflicts?.length > 0 && (
+                {typingDone && synthesis.conflicts?.length > 0 && (
                   <div className="mt-4 space-y-2">
                     <div className="text-xs font-semibold text-rose-700">
                       Conflicts detected
@@ -224,7 +235,7 @@ export function Copilot() {
                   </div>
                 )}
 
-                {synthesis.action_stubs?.length > 0 && (
+                {typingDone && synthesis.action_stubs?.length > 0 && (
                   <div className="mt-4">
                     <div className="text-xs font-semibold text-body">
                       Suggested actions
@@ -282,10 +293,10 @@ export function Copilot() {
             <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wide text-muted">
               <Quote size={13} /> Citations
             </div>
-            {citations.length === 0 ? (
+            {!showCitations ? (
               <p className="mt-3 text-sm text-muted">
-                Sources cited by the agents will appear here as the answer is
-                assembled.
+                Sources cited by the agents will appear here once the answer is
+                complete.
               </p>
             ) : (
               <ul className="mt-3 space-y-2">

@@ -1,5 +1,6 @@
 import axios from "axios";
 import type {
+  BatchUploadResponse,
   BenchmarkResult,
   Conflict,
   DocumentRecord,
@@ -25,6 +26,27 @@ export async function uploadDocument(file: File): Promise<UploadResponse> {
     "/api/v1/documents/upload",
     form,
     { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return data;
+}
+
+export async function uploadDocuments(
+  files: File[],
+  onProgress?: (percent: number) => void
+): Promise<BatchUploadResponse> {
+  const form = new FormData();
+  files.forEach((file) => form.append("files", file));
+  const { data } = await api.post<BatchUploadResponse>(
+    "/api/v1/documents/upload-batch",
+    form,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: (e) => {
+        if (onProgress && e.total) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      },
+    }
   );
   return data;
 }

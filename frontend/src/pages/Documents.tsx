@@ -5,10 +5,10 @@ import {
   FileText,
   Loader2,
   CheckCircle2,
-  Tags,
+  XCircle,
 } from "lucide-react";
-import { useDocuments, useUploadDocument } from "../hooks/useDocuments";
-import type { UploadResponse } from "../services/types";
+import { useDocuments, useUploadDocuments } from "../hooks/useDocuments";
+import type { BatchUploadResponse } from "../services/types";
 import { PageContainer, PageHeader } from "../components/ui/PageHeader";
 import { RowSkeleton } from "../components/ui/Skeleton";
 import { EmptyState } from "../components/ui/EmptyState";
@@ -28,22 +28,31 @@ function docTypeStyle(type: string) {
 
 export function Documents() {
   const [dragging, setDragging] = useState(false);
-  const [lastUpload, setLastUpload] = useState<UploadResponse | null>(null);
+  const [summary, setSummary] = useState<BatchUploadResponse | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { data, isLoading, isError, refetch } = useDocuments();
-  const upload = useUploadDocument();
+  const upload = useUploadDocuments();
 
-  const handleFiles = (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    const file = files[0];
-    const toastId = toast.loading(`Uploading ${file.name}…`);
-    upload.mutate(file, {
+  const handleFiles = (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList);
+    const label =
+      files.length === 1 ? files[0].name : `${files.length} files`;
+    const toastId = toast.loading(`Uploading ${label}…`);
+    upload.mutate(files, {
       onSuccess: (res) => {
-        setLastUpload(res);
-        toast.success(
-          `Ingested ${res.filename} · ${res.chunk_count} chunks`,
-          { id: toastId }
-        );
+        setSummary(res);
+        if (res.failed === 0) {
+          toast.success(
+            `Ingested ${res.succeeded} file(s) · ${res.total_chunks} chunks`,
+            { id: toastId }
+          );
+        } else {
+          toast.error(
+            `${res.succeeded} succeeded, ${res.failed} failed`,
+            { id: toastId }
+          );
+        }
       },
       onError: () => toast.error("Upload failed", { id: toastId }),
     });
@@ -77,6 +86,7 @@ export function Documents() {
         <input
           ref={inputRef}
           type="file"
+          multiple
           className="hidden"
           onChange={(e) => handleFiles(e.target.files)}
         />
@@ -89,33 +99,57 @@ export function Documents() {
         </span>
         <p className="mt-4 text-sm font-medium text-body">
           {upload.isPending
-            ? "Processing document…"
-            : "Drag & drop a document, or click to browse"}
+            ? `Processing documents… ${upload.progress}%`
+            : "Drag & drop documents, or click to browse"}
         </p>
         <p className="mt-1 text-xs text-muted">
-          PDF, images and text — parsed, embedded and linked automatically
+          Multiple files supported — PDF, images and text parsed, embedded and
+          linked automatically
         </p>
+
+        {upload.isPending && (
+          <div className="mt-4 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-violet-100">
+            <div
+              className="h-full rounded-full bg-violet transition-[width] duration-200"
+              style={{ width: `${upload.progress}%` }}
+            />
+          </div>
+        )}
       </div>
 
-      {lastUpload && (
-        <div className="mt-4 rounded-2xl border border-teal-100 bg-teal-50/60 p-4">
-          <div className="flex items-center gap-2 text-sm font-medium text-teal-700">
-            <CheckCircle2 size={16} /> {lastUpload.filename} ingested (
-            {lastUpload.chunk_count} chunks)
+      {summary && (
+        <div className="mt-4 rounded-2xl border border-border bg-card p-4">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+            <span className="font-medium text-body">
+              {summary.total_files} file(s)
+            </span>
+            <span className="text-teal-700">
+              {summary.succeeded} succeeded
+            </span>
+            {summary.failed > 0 && (
+              <span className="text-rose-700">{summary.failed} failed</span>
+            )}
+            <span className="text-muted">
+              {summary.total_chunks} chunks created
+            </span>
           </div>
-          {lastUpload.entities?.equipment_tags?.length > 0 && (
-            <div className="mt-3 flex flex-wrap items-center gap-1.5">
-              <Tags size={14} className="text-muted" />
-              {lastUpload.entities.equipment_tags.map((t) => (
-                <span
-                  key={t}
-                  className="rounded-lg bg-card px-2 py-0.5 font-mono text-[11px] text-body"
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
-          )}
+          <ul className="mt-3 space-y-1.5">
+            {summary.results.map((r, i) => (
+              <li key={i} className="flex items-center gap-2 text-xs">
+                {r.status === "success" ? (
+                  <CheckCircle2 size={14} className="shrink-0 text-teal-700" />
+                ) : (
+                  <XCircle size={14} className="shrink-0 text-rose-700" />
+                )}
+                <span className="font-mono text-body">{r.filename}</span>
+                {r.status === "success" ? (
+                  <span className="text-muted">· {r.chunk_count} chunks</span>
+                ) : (
+                  <span className="text-rose-700/80">· {r.reason}</span>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

@@ -38,6 +38,22 @@ export interface UploadResponse {
   entities: ExtractedEntities;
 }
 
+export interface BatchUploadItem {
+  filename: string;
+  status: "success" | "failed";
+  doc_id?: string | null;
+  chunk_count: number;
+  reason?: string | null;
+}
+
+export interface BatchUploadResponse {
+  total_files: number;
+  succeeded: number;
+  failed: number;
+  total_chunks: number;
+  results: BatchUploadItem[];
+}
+
 export interface Conflict {
   id: string;
   conflict_code?: string;
