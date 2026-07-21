@@ -36,4 +36,7 @@ def classify(query: str) -> dict:
                 scores.items(), key=lambda item: item[1], reverse=True
             )[:_FALLBACK_TOP_N]
         ]
+    print(f"[DEBUG-TRACE] classify query={query!r}", flush=True)
+    print(f"[DEBUG-TRACE] intent_scores={ {k: round(v, 4) for k, v in scores.items()} }", flush=True)
+    print(f"[DEBUG-TRACE] selected_intents={selected}", flush=True)
     return {"scores": scores, "selected": selected}
