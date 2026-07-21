@@ -27,6 +27,22 @@ class UploadResponse(BaseModel):
     entities: ExtractedEntities
 
 
+class BatchUploadItem(BaseModel):
+    filename: str
+    status: str  # "success" | "failed"
+    doc_id: str | None = None
+    chunk_count: int = 0
+    reason: str | None = None
+
+
+class BatchUploadResponse(BaseModel):
+    total_files: int
+    succeeded: int
+    failed: int
+    total_chunks: int
+    results: list[BatchUploadItem]
+
+
 class DocumentRecord(BaseModel):
     id: str
     filename: str
