@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str
 
     GROQ_TEXT_MODEL: str = "llama-3.3-70b-versatile"
-    GROQ_VISION_MODEL: str = "meta-llama/llama-4-scout-17b-16e-instruct"
+    GROQ_VISION_MODEL: str = "qwen/qwen3.6-27b"
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
 
 
