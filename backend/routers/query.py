@@ -28,6 +28,50 @@ _NODE_LABELS = {
 }
 
 
+def _persist_conflicts(synthesis: dict) -> None:
+    """Persist query-time detected conflicts into the conflicts table so they appear on
+    the dashboards. Skips duplicates of already-open conflicts with the same description."""
+    conflicts = synthesis.get("conflicts") or []
+    print(f"[CONFLICT-TRACE] step2: _persist_conflicts entered, raw_conflicts={json.dumps(conflicts, default=str)[:1000]}", flush=True)
+    if not conflicts:
+        print("[CONFLICT-TRACE] step2: no conflicts -> returning early (nothing to persist)", flush=True)
+        return
+    existing = {
+        (c.get("description") or "").strip()
+        for c in supabase_service.get_conflicts(status="open")
+    }
+    print(f"[CONFLICT-TRACE] step2: existing open descriptions count={len(existing)}", flush=True)
+    severity = float(synthesis.get("severity", 0.0) or 0.0)
+    exposure = synthesis.get("financial_exposure_inr", 0) or 0
+    for conflict in conflicts:
+        description = (conflict.get("description") or "").strip()
+        if not description:
+            print(f"[CONFLICT-TRACE] step2: SKIP - empty description for conflict={conflict!r}", flush=True)
+            continue
+        if description in existing:
+            print(f"[CONFLICT-TRACE] step2: SKIP - duplicate of open conflict desc={description!r}", flush=True)
+            continue
+        payload = {
+            "description": description,
+            "recommended_action": conflict.get("resolution", ""),
+            "financial_exposure_inr": exposure,
+            "severity": severity,
+            "status": "open",
+        }
+        print(f"[CONFLICT-TRACE] step2: INSERT payload={json.dumps(payload, default=str)}", flush=True)
+        try:
+            inserted = supabase_service.insert_conflict(payload)
+            print(f"[CONFLICT-TRACE] step3: insert_conflict returned={json.dumps(inserted, default=str)}", flush=True)
+        except Exception as exc:
+            print(f"[CONFLICT-TRACE] step3: insert_conflict RAISED {type(exc).__name__}: {exc}", flush=True)
+            raise
+        existing.add(description)
+
+    # step4: read back the conflicts table immediately after insertion
+    after = supabase_service.get_conflicts(status="open")
+    print(f"[CONFLICT-TRACE] step4: conflicts table now has open_count={len(after)} descriptions={[ (c.get('description') or '')[:40] for c in after]}", flush=True)
+
+
 async def _run_stream(request: QueryRequest):
     history = supabase_service.get_chat_history(request.session_id, limit=12)
     initial_state = {
@@ -52,6 +96,10 @@ async def _run_stream(request: QueryRequest):
                 "node_end",
                 {"agent": _NODE_LABELS[name], "output": payload},
             )
+
+    print(f"[CONFLICT-TRACE] step1: about to call _persist_conflicts, synthesis has conflicts key={'conflicts' in final_synthesis} count={len(final_synthesis.get('conflicts') or [])}", flush=True)
+    _persist_conflicts(final_synthesis)
+    print("[CONFLICT-TRACE] step1: returned from _persist_conflicts", flush=True)
 
     supabase_service.save_chat_message(
         {
