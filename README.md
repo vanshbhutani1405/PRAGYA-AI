@@ -41,7 +41,7 @@ A standard RAG system asked *"is it safe to weld on Line-4 this Saturday?"* retr
 
 ## Architecture
 
-![PRAGYA AI System Architecture](Pragya_AI_Architecture.png)
+![PRAGYA AI System Architecture](./Pragya%20AI%20Architecture.png)
 
 **Request flow:** query → EventRouter classifies intent (cosine similarity, 5 prototypes) → parallel dispatch to specialist agents → each retrieves from Neo4j (graph/temporal) + Supabase (semantic) → Synthesis Agent arbitrates conflicts and outputs one composite-scored recommendation → streamed live via SSE.
 
@@ -94,7 +94,7 @@ A standard RAG system asked *"is it safe to weld on Line-4 this Saturday?"* retr
 ### Backend
 ```bash
 cd backend
-python -m venv venv && source venv/bin/activate   # .\venv\Scripts\activate on Windows
+python -m venv venv && source venv/bin/activate   # venv\Scripts\activate on Windows
 pip install -r requirements.txt
 cp .env.example .env   # add NEO4J_URI, SUPABASE_URL, GROQ_API_KEY, etc.
 uvicorn main:app --reload   # http://localhost:8000
@@ -132,14 +132,9 @@ pragya-ai/
 
 ## Limitations & Roadmap
 
-**Current scope:** proof-of-concept — no authentication layer, synthetic seed data for demo conflicts.
+**Current scope:** proof-of-concept — no authentication layer.
 
 **Planned:** auth + multi-tenant `plant_id` namespacing, scheduled regulatory ingestion, query-result caching, graceful per-agent degradation, automated compliance audits, full PDF report export.
 
 ---
 
-<div align="center">
-
-*Built for ET AI Hackathon 2026 — Problem Statement #8*
-
-</div>
