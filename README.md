@@ -41,7 +41,7 @@ A standard RAG system asked *"is it safe to weld on Line-4 this Saturday?"* retr
 
 ## Architecture
 
-![PRAGYA AI System Architecture](./Pragya_AI_Architecture.png)
+![PRAGYA AI System Architecture](Pragya_AI_Architecture.png)
 
 **Request flow:** query → EventRouter classifies intent (cosine similarity, 5 prototypes) → parallel dispatch to specialist agents → each retrieves from Neo4j (graph/temporal) + Supabase (semantic) → Synthesis Agent arbitrates conflicts and outputs one composite-scored recommendation → streamed live via SSE.
 
